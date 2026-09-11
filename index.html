@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مولّد المذكرات البيداغوجية - Edura Academy</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- مكتبة التعرف الضوئي على النصوص وتحليل الصور OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@400;600;700;800&family=Marhey:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" crossorigin="anonymous">
+
+<style>
+  :root {
+    --primary: #6B21A8;
+    --primary-light: #A855F7;
+    --primary-dark: #581C87;
+    --accent: #C084FC;
+    --rose: #E9D5FF;
+    --memo-base-font-size: 13px;
+    --memo-font-family: 'Cairo', sans-serif;
+  }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 40%, #ede9fe 100%);
+    min-height: 100vh;
+    direction: rtl;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .glass {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(168,85,247,0.18);
+  }
+
+  .sidebar-scroll::-webkit-scrollbar { width: 5px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+
+  #memo-paper {
+    width: 794px;
+    min-height: 1123px;
+    background: #fff;
+    position: relative;
+    box-shadow: 0 25px 60px -12px rgba(107,33,168,0.25);
+    font-family: var(--memo-font-family) !important;
+    font-size: var(--memo-base-font-size) !important;
+    padding: 25px 30px;
+    box-sizing: border-box;
+  }
+
+  #memo-paper * { 
+    font-family: inherit; 
+    box-sizing: border-box;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  #memo-paper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--memo-bg);
+    background-size: 80px 80px;
+    opacity: var(--bg-opacity, 0.06);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  #memo-paper > * { position: relative; z-index: 1; }
+
+  .memo-border {
+    border: 3px solid var(--primary);
+    outline: 1px solid var(--accent);
+    outline-offset: -5px;
+  }
+
+  table.layout-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    margin-bottom: 8px;
+  }
+
+  table.layout-table td, table.layout-table th {
+    vertical-align: top;
+    padding: 2px;
+  }
+
+  .section-badge {
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 1em;
+    display: inline-block;
+  }
+
+  .field-box {
+    border: 1.5px solid var(--primary);
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: rgba(250,245,255,0.4);
+    font-size: 0.95em;
+    min-height: 38px;
+    line-height: 1.5;
+  }
+
+  .editable:focus { outline: 2px solid var(--primary-light); background: #faf5ff; }
+
+  table.memo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+    table-layout: fixed;
+  }
+  table.memo-table th, table.memo-table td {
+    border: 1.5px solid var(--primary);
+    padding: 6px 8px;
+    vertical-align: middle;
+    line-height: 1.4;
+  }
+  table.memo-table th {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .color-swatch {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .color-swatch:hover, .color-swatch.active { border-color: #1f2937; transform: scale(1.15); }
+
+  .btn-main, .btn-secondary {
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 700;
+    font-family: 'Cairo', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-main {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(107,33,168,0.35);
+  }
+  .btn-main:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(107,33,168,0.45); }
+  
+  .btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+  }
+  .btn-secondary:hover { background: var(--rose); }
+
+  .mic-btn {
+    background: #f3e8ff;
+    border: 1.5px solid #c084fc;
+    color: #6b21a8;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mic-btn:hover { background: #e9d5ff; }
+  .mic-btn.recording {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #dc2626 !important;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  input[type="color"] { width: 42px; height: 42px; border: none; border-radius: 10px; cursor: pointer; padding: 0; background: none; }
+  input[type="range"] { accent-color: var(--primary); }
+
+  .ctrl-label { font-size: 12px; font-weight: 700; color: #6B21A8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+  .ctrl-input { width: 100%; border: 1.5px solid #d8b4fe; border-radius: 8px; padding: 8px 12px; font-family: 'Cairo', sans-serif; font-size: 13px; background: white; }
+  .ctrl-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(168,85,247,0.15); }
+
+  .tab-btn { flex: 1; padding: 10px; text-align: center; font-weight: 700; font-size: 12px; cursor: pointer; border-bottom: 3px solid transparent; color: #9ca3af; transition: all 0.2s; }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  .header-crest {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 26px;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(107,33,168,0.25);
+    overflow: hidden;
+  }
+  .header-crest img { width: 100%; height: 100%; object-fit: cover; }
+
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: linear-gradient(135deg, #6B21A8, #A855F7);
+    color: white; padding: 14px 32px; border-radius: 50px; font-weight: 700; z-index: 9999;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 10px 40px rgba(107,33,168,0.4);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="relative z-10 min-h-screen flex flex-col justify-between">
+  <div>
+    <!-- شريط الأزرار العلوي -->
+    <header class="glass sticky top-0 z-50 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-white shadow-sm border border-purple-200 p-0.5 overflow-hidden flex items-center justify-center">
+             <img id="top-bar-logo" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%236B21A8' stroke-width='2'><path d='M22 10v6M2 10l10-5 10 5-10 5z'/><path d='M6 12v5c3 3 9 3 12 0v-5'/></svg>" class="object-contain w-full h-full">
+          </div>
+          <div>
+            <h1 class="text-lg font-extrabold" style="color:var(--primary)">Edura Academy - مولّد المذكرات المحترف</h1>
+            <p class="text-xs text-purple-800 font-semibold">إعداد وتطوير: الأستاذة يوسفي رباب — خبيرة ذكاء اصطناعي وبيداغوجيا</p>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap items-center">
+          <button class="btn-secondary text-sm" onclick="resetMemo()" style="width: auto;">🔄 إعادة تعيين</button>
+          <button class="btn-main text-sm" onclick="downloadPDF()" style="width: auto;">📄 تحميل المذكرة PDF</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+
+      <!-- لوحة التحكم الجانبية -->
+      <aside class="lg:w-96 flex-shrink-0">
+        <div class="glass rounded-2xl shadow-xl overflow-hidden sticky top-20">
+          <div class="flex border-b border-purple-100">
+            <div class="tab-btn active" onclick="switchTab('content',this)">📝 تحليل وتعبئة المحتوى</div>
+            <div class="tab-btn" onclick="switchTab('design',this)">🎨 التصميم والخط والشعار</div>
+          </div>
+
+          <!-- تبويب المحتوى وتحليل الصور الذكي -->
+          <div class="sidebar-scroll p-4 space-y-4" style="max-height:75vh;overflow-y:auto" id="tab-content">
+            
+            <!-- أداة تحليل الصورة وملء الحقول تلقائياً -->
+            <div class="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border-2 border-dashed border-purple-400">
+              <label class="ctrl-label text-purple-900 mb-1">🧠 الذكاء البيداغوجي: تحليل صورة درس/وثيقة</label>
+              <p class="text-[11px] text-purple-700 mb-2">ارفع صورة الدرس أو التوزيع ليقوم النظام بتحليلها استخراجياً وتعبئة حقول المذكرة تلقائياً.</p>
+              <input type="file" id="aiImageAnalyzerInput" accept="image/*" class="ctrl-input text-xs" onchange="handleAIImageAnalysis(event)">
+              <div id="ocrStatus" class="text-xs font-bold text-purple-800 mt-2 text-center" style="display:none;"></div>
+            </div>
+
+            <div class="p-3 bg-purple-100 rounded-xl border border-purple-300">
+              <label class="ctrl-label text-purple-900">🌐 لغة المذكرة واتجاه التنسيق:</label>
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <button onclick="setMemoLanguage('ar')" class="py-1 px-2 text-xs font-bold rounded bg-purple-700 text-white hover:bg-purple-800">العربية</button>
+                <button onclick="setMemoLanguage('fr')" class="py-1 px-2 text-xs font-bold rounded bg-white text-purple-800 border border-purple-400 hover:bg-purple-50">Français</button>
+                <button onclick="setMemoLanguage('en')" class="py-1 px-2 text-xs font-bold rounded bg-white text-purple-800 border border-purple-400 hover:bg-purple-50">English</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>🏛️ الدولة / الوزارة</span>
+                <button class="mic-btn" onclick="toggleVoice('c-ministry', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-ministry" value="الجمهورية الجزائرية الديمقراطية الشعبية" oninput="syncField('f-ministry',this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>المديرية / المؤسسة</span>
+                <button class="mic-btn" onclick="toggleVoice('c-education', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-education" value="وزارة التربية الوطنية" oninput="syncField('f-education',this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>المؤسسة التعليمية / الأكاديمية</span>
+                <button class="mic-btn" onclick="toggleVoice('c-school', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-school" value="أكاديمية إيدورا (Edura Academy)" oninput="syncField('f-school',this.value)">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="ctrl-label">
+                  <span>المادة</span>
+                  <button class="mic-btn" onclick="toggleVoice('c-subject', this)">🎤</button>
+                </label>
+                <input class="ctrl-input" id="c-subject" value="التاريخ والجغرافيا" oninput="syncField('f-subject',this.value)">
+              </div>
+              <div>
+                <label class="ctrl-label">
+                  <span>المستوى</span>
+                  <button class="mic-btn" onclick="toggleVoice('c-level', this)">🎤</button>
+                </label>
+                <input class="ctrl-input" id="c-level" value="السنة الثانية متوسط" oninput="syncField('f-level',this.value)">
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="ctrl-label">
+                  <span>المدة</span>
+                  <button class="mic-btn" onclick="toggleVoice('c-duration', this)">🎤</button>
+                </label>
+                <input class="ctrl-input" id="c-duration" value="ساعة واحدة" oninput="syncField('f-duration',this.value)">
+              </div>
+              <div>
+                <label class="ctrl-label">
+                  <span>رقم المذكرة</span>
+                  <button class="mic-btn" onclick="toggleVoice('c-number', this)">🎤</button>
+                </label>
+                <input class="ctrl-input" id="c-number" value="01" oninput="syncField('f-number',this.value)">
+              </div>
+            </div>
+            
+            <div>
+              <label class="ctrl-label">
+                <span>الأستاذ(ة)</span>
+                <button class="mic-btn" onclick="toggleVoice('c-teacher', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-teacher" value="الأستاذة: يوسفي رباب" oninput="syncField('f-teacher',this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>المقطع / الوحدة</span>
+                <button class="mic-btn" onclick="toggleVoice('c-unit', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-unit" value="المقطع الأول: التحولات التاريخية والجغرافية" oninput="syncField('f-unit',this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>عنوان الدرس</span>
+                <button class="mic-btn" onclick="toggleVoice('c-title', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input" id="c-title" value="موقع الدولة الإسلامية وأبعادها الجغرافية" oninput="syncField('f-title',this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>الكفاءة المستهدفة</span>
+                <button class="mic-btn" onclick="toggleVoice('c-objective', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-objective" rows="2" oninput="syncField('f-objective',this.value)">يتعرّف المتعلّم على الخريطة التاريخية ويحلل أبعاد التوسع الجغرافي واستخدام الموارد.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>المكتسبات القبلية</span>
+                <button class="mic-btn" onclick="toggleVoice('c-prereq', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-prereq" rows="2" oninput="syncField('f-prereq',this.value)">المفاهيم الجغرافية الأساسية وخريطة شبه الجزيرة العربية.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>الوسائل التعليمية</span>
+                <button class="mic-btn" onclick="toggleVoice('c-tools', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-tools" rows="2" oninput="syncField('f-tools',this.value)">خريطة العالم التاريخية — مسلاط ضوئي — الكتاب المدرسي.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>صعوبات التعلّم المتوقعة</span>
+                <button class="mic-btn" onclick="toggleVoice('c-difficulties', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-difficulties" rows="2" oninput="syncField('f-difficulties',this.value)">قراءة الرموز التاريخية وتحديد المواقع الجغرافية بدقة.</textarea>
+            </div>
+
+            <hr class="border-purple-100">
+            <p class="text-xs font-bold text-purple-600">📖 مراحل سير الحصة</p>
+
+            <div>
+              <label class="ctrl-label">
+                <span>① وضعية الانطلاق</span>
+                <button class="mic-btn" onclick="toggleVoice('c-start', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input mb-1" id="c-start-time" value="10 د" oninput="syncField('f-start-time',this.value)">
+              <textarea class="ctrl-input" id="c-start" rows="3" oninput="syncField('f-start',this.value)">يطرح الأستاذ سؤالاً إشكالياً حول الموقع الجغرافي وأثره.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>② بناء التعلّمات</span>
+                <button class="mic-btn" onclick="toggleVoice('c-build', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input mb-1" id="c-build-time" value="35 د" oninput="syncField('f-build-time',this.value)">
+              <textarea class="ctrl-input" id="c-build" rows="4" oninput="syncField('f-build',this.value)">• التحليل الفلكي والجغرافي للخريطة.&#10;• دراسة التضاريس والمناخ.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>③ استثمار المكتسبات</span>
+                <button class="mic-btn" onclick="toggleVoice('c-invest', this)">🎤 صوتي</button>
+              </label>
+              <input class="ctrl-input mb-1" id="c-invest-time" value="10 د" oninput="syncField('f-invest-time',this.value)">
+              <textarea class="ctrl-input" id="c-invest" rows="3" oninput="syncField('f-invest',this.value)">تطبيق: توقيع المظاهر الطبيعية على خريطة صماء.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>التقويم</span>
+                <button class="mic-btn" onclick="toggleVoice('c-eval', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-eval" rows="2" oninput="syncField('f-eval',this.value)">تقويم تشخيصي أثناء قراءة الخريطة وملاحظة الأداء.</textarea>
+            </div>
+
+            <div>
+              <label class="ctrl-label">
+                <span>الملاحظات / العمل المنزلي</span>
+                <button class="mic-btn" onclick="toggleVoice('c-notes', this)">🎤 صوتي</button>
+              </label>
+              <textarea class="ctrl-input" id="c-notes" rows="2" oninput="syncField('f-notes',this.value)">رسم خريطة مبسطة واستخراج الإحداثيات المحددة.</textarea>
+            </div>
+          </div>
+
+          <!-- تبويب التصميم والخط والشعار -->
+          <div class="sidebar-scroll p-4 space-y-5 hidden" style="max-height:75vh;overflow-y:auto" id="tab-design">
+
+            <div class="p-3 bg-purple-50 rounded-xl border border-purple-200">
+              <label class="ctrl-label text-purple-900">🖼️ رفع أو تحديد صورة الشعار في المذكرة:</label>
+              <input type="file" id="logoUpload" accept="image/*" class="ctrl-input text-xs mt-1" onchange="handleLogoUpload(event)">
+              <p class="text-[10px] text-purple-600 mt-1">يُرجى رفع الشعار الخاص بالمؤسسة.</p>
+            </div>
+
+            <div>
+              <label class="ctrl-label">🎨 أيقونات المادة للخلفية:</label>
+              <select class="ctrl-input" id="bgPattern" onchange="updateBgPattern()">
+                <option value="history_geo">🏛️ 📜 🌍 التاريخ والجغرافيا</option>
+                <option value="math">🧮 📐 📊 الرياضيات والكميات</option>
+                <option value="physics_chem">🧪 🔬 ⚡ العلوم والفيزياء</option>
+                <option value="languages">✍️ 📖 ✒️ اللغات والأدب</option>
+                <option value="informatics">💻 🖥️ 💾 الإعلام الآلي والتقنية</option>
+                <option value="roses">🌹 🌸 💜 ورود بنفسجية جمالية</option>
+                <option value="all">🌟 مزيج شامل لكافة المواد</option>
+                <option value="none">بدون خلفية</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="ctrl-label">🎨 اللون الرئيسي للمذكرة</label>
+              <div class="flex items-center gap-3 mt-1">
+                <input type="color" id="colorPicker" value="#6B21A8" oninput="setPrimaryColor(this.value)">
+                <div class="flex gap-2 flex-wrap" id="swatches">
+                  <div class="color-swatch active" style="background:#6B21A8" onclick="pickSwatch('#6B21A8',this)"></div>
+                  <div class="color-swatch" style="background:#1D4ED8" onclick="pickSwatch('#1D4ED8',this)"></div>
+                  <div class="color-swatch" style="background:#047857" onclick="pickSwatch('#047857',this)"></div>
+                  <div class="color-swatch" style="background:#B45309" onclick="pickSwatch('#B45309',this)"></div>
+                  <div class="color-swatch" style="background:#BE123C" onclick="pickSwatch('#BE123C',this)"></div>
+                  <div class="color-swatch" style="background:#0F766E" onclick="pickSwatch('#0F766E',this)"></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="ctrl-label">👁️ شفافية الأيقونات: <span id="opacityVal">6%</span></label>
+              <input type="range" min="0" max="25" value="6" class="w-full" id="bgOpacity" oninput="updateOpacity(this.value)">
+            </div>
+
+            <div class="p-3 bg-purple-50 rounded-xl border border-purple-200">
+              <label class="ctrl-label">📏 التحكم بحجم الخط الإجمالي (الحجم الحالي: <span id="fontSizeVal" class="text-purple-800 font-extrabold">13px</span>)</label>
+              <input type="range" min="10" max="18" value="13" class="w-full mt-2" id="fontSizeRange" oninput="setFontSize(this.value)">
+            </div>
+
+            <div>
+              <label class="ctrl-label">✍️ نوع خط المذكرة الشامل</label>
+              <select class="ctrl-input" onchange="setFontFamily(this.value)">
+                <optgroup label="خطوط عربية الرسمية">
+                  <option value="'Cairo', sans-serif">Cairo (عصري وموصى به)</option>
+                  <option value="'Aref Ruqaa', serif">✍️ خط يدوي (رقعة أصيل)</option>
+                  <option value="'Marhey', cursive">✍️ خط يدوي (حديث)</option>
+                  <option value="'Amiri', serif">Amiri (كلاسيكي رسمي)</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div>
+              <label class="ctrl-label">📐 نمط الإطار الخارجي</label>
+              <select class="ctrl-input" onchange="updateBorder(this.value)">
+                <option value="double">إطار مزدوج</option>
+                <option value="single">إطار بسيط</option>
+                <option value="none">بدون إطار</option>
+              </select>
+            </div>
+
+            <button class="btn-main mt-2" onclick="downloadPDF()">📄 تحميل المذكرة PDF</button>
+            <button class="btn-secondary" onclick="window.print()">🖨️ طباعة مباشرة</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ورقة المذكرة العريضة المثالية A4 -->
+      <main class="flex-1 overflow-x-auto flex justify-center">
+        <div id="memo-paper" class="memo-border rounded-sm">
+
+          <!-- الهيدر الجدولي الثابت -->
+          <table class="layout-table">
+            <tr>
+              <td style="width:38%; text-align:right;">
+                <div contenteditable="true" class="editable" id="f-ministry" style="font-weight:700;font-size:1.05em">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                <div contenteditable="true" class="editable" id="f-education" style="font-weight:600;font-size:0.9em;color:#444">وزارة التربية الوطنية</div>
+                <div contenteditable="true" class="editable" id="f-school" style="font-size:0.85em;color:#555">أكاديمية إيدورا (Edura Academy)</div>
+              </td>
+              <td style="width:24%; text-align:center; vertical-align:middle;">
+                <div class="header-crest" id="crest">🏛️</div>
+              </td>
+              <td style="width:38%; text-align:left;">
+                <div style="font-weight:700;font-size:1.1em" id="lbl-docTitle">المذكّرة البيداغوجية</div>
+                <div style="font-size:0.9em;margin-top:2px"><span id="lbl-num">رقم:</span> <span contenteditable="true" class="editable" id="f-number" style="font-weight:700;color:var(--primary)">01</span></div>
+                <div contenteditable="true" class="editable" id="f-teacher" style="font-size:0.9em;margin-top:2px">الأستاذة: يوسفي رباب</div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="height:3px;background:linear-gradient(90deg,transparent,var(--primary),var(--accent),var(--primary),transparent);border-radius:2px;margin: 8px 0 12px 0;"></div>
+
+          <!-- جدول المعطيات الأولية -->
+          <table class="memo-table" style="margin-bottom:12px">
+            <tr>
+              <th style="width:18%" id="lbl-subject">المادة</th>
+              <td contenteditable="true" class="editable" id="f-subject" style="width:32%;font-weight:700">التاريخ والجغرافيا</td>
+              <th style="width:18%" id="lbl-level">المستوى</th>
+              <td contenteditable="true" class="editable" id="f-level" style="width:32%">السنة الثانية متوسط</td>
+            </tr>
+            <tr>
+              <th id="lbl-duration">المدة</th>
+              <td contenteditable="true" class="editable" id="f-duration">ساعة واحدة</td>
+              <th id="lbl-unit">المقطع / الوحدة</th>
+              <td contenteditable="true" class="editable" id="f-unit">المقطع الأول: التحولات التاريخية والجغرافية</td>
+            </tr>
+            <tr>
+              <th id="lbl-title">عنوان الدرس</th>
+              <td colspan="3" contenteditable="true" class="editable" id="f-title" style="font-weight:700;font-size:1.1em;text-align:center;color:var(--primary)">موقع الدولة الإسلامية وأبعادها الجغرافية</td>
+            </tr>
+          </table>
+
+          <!-- الكفاءة المستهدفة -->
+          <table class="layout-table">
+            <tr>
+              <td style="width:100%">
+                <div class="section-badge" id="lbl-objective" style="margin-bottom:4px">🎯 الكفاءة المستهدفة</div>
+                <div contenteditable="true" class="editable field-box" id="f-objective">يتعرّف المتعلّم على الخريطة التاريخية ويحلل أبعاد التوسع الجغرافي واستخدام الموارد.</div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- المكتسبات القبلية والوسائل -->
+          <table class="layout-table">
+            <tr>
+              <td style="width:49%;">
+                <div class="section-badge" id="lbl-prereq" style="margin-bottom:4px">📌 المكتسبات القبلية</div>
+                <div contenteditable="true" class="editable field-box" id="f-prereq" style="min-height:50px">المفاهيم الجغرافية الأساسية وخريطة شبه الجزيرة العربية.</div>
+              </td>
+              <td style="width:2%;"></td>
+              <td style="width:49%;">
+                <div class="section-badge" id="lbl-tools" style="margin-bottom:4px">🛠️ الوسائل التعليمية</div>
+                <div contenteditable="true" class="editable field-box" id="f-tools" style="min-height:50px">خريطة العالم التاريخية — مسلاط ضوئي — الكتاب المدرسي.</div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- صعوبات التعلّم -->
+          <table class="layout-table">
+            <tr>
+              <td style="width:100%">
+                <div class="section-badge" id="lbl-difficulties" style="margin-bottom:4px">⚠️ صعوبات التعلّم المتوقعة</div>
+                <div contenteditable="true" class="editable field-box" id="f-difficulties">قراءة الرموز التاريخية وتحديد المواقع الجغرافية بدقة.</div>
+              </td>
+            </tr>
+          </table>
+
+          <!-- جدول مراحل الدرس -->
+          <div style="margin-bottom:12px; margin-top: 8px;">
+            <div class="section-badge" id="lbl-steps" style="margin-bottom:4px">📖 سيرورة الحصة</div>
+            <table class="memo-table">
+              <thead>
+                <tr>
+                  <th style="width:22%" id="lbl-colStage">المرحلة</th>
+                  <th style="width:12%" id="lbl-colTime">المدة</th>
+                  <th style="width:33%" id="lbl-colTeacher">نشاط الأستاذ</th>
+                  <th style="width:33%" id="lbl-colStudent">نشاط المتعلّم</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align:center;font-weight:700;background:rgba(168,85,247,0.08)" id="lbl-sStart">وضعية الانطلاق</td>
+                  <td contenteditable="true" class="editable" id="f-start-time" style="text-align:center;font-weight:700">10 د</td>
+                  <td contenteditable="true" class="editable" id="f-start">يطرح الأستاذ سؤالاً إشكالياً حول الموقع الجغرافي وأثره.</td>
+                  <td contenteditable="true" class="editable">يشارك التلاميذ ويربطون بين الموقع والتاريخ.</td>
+                </tr>
+                <tr>
+                  <td style="text-align:center;font-weight:700;background:rgba(168,85,247,0.08)" id="lbl-sBuild">بناء التعلّمات</td>
+                  <td contenteditable="true" class="editable" id="f-build-time" style="text-align:center;font-weight:700">35 د</td>
+                  <td contenteditable="true" class="editable" id="f-build">• التحليل الفلكي والجغرافي للخريطة.<br>• دراسة التضاريس والمناخ.</td>
+                  <td contenteditable="true" class="editable">يحللون المعطيات ويستخرجون الخصائص.</td>
+                </tr>
+                <tr>
+                  <td style="text-align:center;font-weight:700;background:rgba(168,85,247,0.08)" id="lbl-sInvest">استثمار المكتسبات</td>
+                  <td contenteditable="true" class="editable" id="f-invest-time" style="text-align:center;font-weight:700">10 د</td>
+                  <td contenteditable="true" class="editable" id="f-invest">تطبيق: توقيع المظاهر الطبيعية على خريطة صماء.</td>
+                  <td contenteditable="true" class="editable">ينجزون التوقيع فردياً ويتم التصحيح.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- التقويم والملاحظات -->
+          <table class="layout-table">
+            <tr>
+              <td style="width:49%;">
+                <div class="section-badge" id="lbl-eval" style="margin-bottom:4px">✅ التقويم</div>
+                <div contenteditable="true" class="editable field-box" id="f-eval" style="min-height:48px">تقويم تشخيصي أثناء قراءة الخريطة وملاحظة الأداء.</div>
+              </td>
+              <td style="width:2%;"></td>
+              <td style="width:49%;">
+                <div class="section-badge" id="lbl-notes" style="margin-bottom:4px">📝 ملاحظات / واجب منزلي</div>
+                <div contenteditable="true" class="editable field-box" id="f-notes" style="min-height:48px">رسم خريطة مبسطة واستخراج الإحداثيات المحددة.</div>
+              </td>
+            </tr>
+          </table>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ذيل الصفحة -->
+  <footer class="glass mt-10 py-6 border-t border-purple-200">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-purple-900 font-medium">
+      <div class="flex items-center gap-2">
+        <span class="font-bold">📞 اتصل بنا:</span>
+        <a href="mailto:edura.academy.official@gmail.com" class="hover:underline text-purple-700 dir-ltr font-bold">edura.academy.official@gmail.com</a>
+      </div>
+      <div class="flex items-center gap-6 font-bold">
+        <a href="https://www.facebook.com/profile.php?id=61593744704479&mibextid=ZbWKwL" target="_blank" class="flex items-center gap-1 hover:underline text-blue-700">📘 الفيسبوك</a>
+        <a href="https://www.instagram.com/edura.academy.official/" target="_blank" class="flex items-center gap-1 hover:underline text-pink-600">📸 الانستغرام</a>
+      </div>
+      <div class="text-xs text-purple-800 text-center font-semibold">
+        إعداد وتطوير: الأستاذة يوسفي رباب — خبيرة ذكاء اصطناعي وبيداغوجيا
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+let recognition = null;
+let activeMicBtn = null;
+let customLogoBase64 = null;
+
+const langDictionary = {
+  ar: {
+    dir: 'rtl', font: "'Cairo', sans-serif",
+    docTitle: 'المذكّرة البيداغوجية', numLabel: 'رقم:',
+    subject: 'المادة', level: 'المستوى', duration: 'المدة', unit: 'المقطع / الوحدة',
+    title: 'عنوان الدرس', objective: '🎯 الكفاءة المستهدفة', prereq: '📌 المكتسبات القبلية',
+    tools: '🛠️ الوسائل التعليمية', difficulties: '⚠️ صعوبات التعلّم المتوقعة',
+    steps: '📖 سيرورة الحصة', colStage: 'المرحلة', colTime: 'المدة',
+    colTeacher: 'نشاط الأستاذ', colStudent: 'نشاط المتعلّم',
+    sStart: 'وضعية الانطلاق', sBuild: 'بناء التعلّمات', sInvest: 'استثمار المكتسبات',
+    eval: '✅ التقويم', notes: '📝 ملاحظات / واجب منزلي'
+  },
+  fr: {
+    dir: 'ltr', font: "'Roboto', sans-serif",
+    docTitle: 'FICHE PÉDAGOGIQUE', numLabel: 'N° :',
+    subject: 'Matière', level: 'Niveau', duration: 'Durée', unit: 'Module / Séquence',
+    title: 'Titre de la leçon', objective: '🎯 Objectif Pédagogique', prereq: '📌 Prérequis',
+    tools: '🛠️ Matériel Didactique', difficulties: '⚠️ Difficultés Anticipées',
+    steps: '📖 Déroulement de la Séance', colStage: 'Étape', colTime: 'Durée',
+    colTeacher: "Activité de l'Enseignant", colStudent: "Activité de l'Élève",
+    sStart: 'Mise en train', sBuild: 'Construction des savoirs', sInvest: 'Réinvestissement',
+    eval: '✅ Évaluation', notes: '📝 Remarques / Devoir'
+  },
+  en: {
+    dir: 'ltr', font: "'Roboto', sans-serif",
+    docTitle: 'LESSON PLAN', numLabel: 'No:',
+    subject: 'Subject', level: 'Grade / Level', duration: 'Duration', unit: 'Unit / Module',
+    title: 'Lesson Title', objective: '🎯 Learning Objective', prereq: '📌 Prerequisites',
+    tools: '🛠️ Teaching Aids', difficulties: '⚠️ Expected Difficulties',
+    steps: '📖 Lesson Procedure', colStage: 'Stage', colTime: 'Time',
+    colTeacher: 'Teacher Activity', colStudent: 'Student Activity',
+    sStart: 'Warm-up', sBuild: 'Lesson Delivery', sInvest: 'Practice / Application',
+    eval: '✅ Assessment', notes: '📝 Notes / Homework'
+  }
+};
+
+function setMemoLanguage(langKey) {
+  const dict = langDictionary[langKey] || langDictionary.ar;
+  const paper = document.getElementById('memo-paper');
+  paper.setAttribute('dir', dict.dir);
+  paper.style.textAlign = dict.dir === 'rtl' ? 'right' : 'left';
+  
+  document.getElementById('lbl-docTitle').textContent = dict.docTitle;
+  document.getElementById('lbl-num').textContent = dict.numLabel;
+  document.getElementById('lbl-subject').textContent = dict.subject;
+  document.getElementById('lbl-level').textContent = dict.level;
+  document.getElementById('lbl-duration').textContent = dict.duration;
+  document.getElementById('lbl-unit').textContent = dict.unit;
+  document.getElementById('lbl-title').textContent = dict.title;
+  document.getElementById('lbl-objective').textContent = dict.objective;
+  document.getElementById('lbl-prereq').textContent = dict.prereq;
+  document.getElementById('lbl-tools').textContent = dict.tools;
+  document.getElementById('lbl-difficulties').textContent = dict.difficulties;
+  document.getElementById('lbl-steps').textContent = dict.steps;
+  document.getElementById('lbl-colStage').textContent = dict.colStage;
+  document.getElementById('lbl-colTime').textContent = dict.colTime;
+  document.getElementById('lbl-colTeacher').textContent = dict.colTeacher;
+  document.getElementById('lbl-colStudent').textContent = dict.colStudent;
+  document.getElementById('lbl-sStart').textContent = dict.sStart;
+  document.getElementById('lbl-sBuild').textContent = dict.sBuild;
+  document.getElementById('lbl-sInvest').textContent = dict.sInvest;
+  document.getElementById('lbl-eval').textContent = dict.eval;
+  document.getElementById('lbl-notes').textContent = dict.notes;
+
+  setFontFamily(dict.font);
+  showToast(`🌐 تم تغيير لغة المذكرة إلى (${langKey.toUpperCase()})!`);
+}
+
+/* وظيفة تحليل الصورة استخراجياً (OCR) وملء الحقول تلقائياً بالذكاء الاصطناعي البيداغوجي المحدثة */
+async function handleAIImageAnalysis(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('ocrStatus');
+  statusEl.style.display = 'block';
+  statusEl.textContent = '🔄 جاري تهيئة محرك الذكاء الاصطناعي وتحميل لغات التعرف (OCR)...';
+  showToast('🤖 بدء تحليل الصورة الذكي...');
+
+  try {
+    // تهيئة محرك Tesseract بالإصدار الخامس المتوافق
+    const worker = await Tesseract.createWorker('ara+fra+eng');
+    
+    statusEl.textContent = '🔄 جاري قراءة النصوص وتحليل محتوى الدرس بيداغوجياً...';
+    const ret = await worker.recognize(file);
+    const extractedText = ret.data.text;
+    await worker.terminate();
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      throw new Error('لم يتم العثور على نصوص واضحة في الصورة.');
+    }
+
+    statusEl.textContent = '✨ تم استخراج النصوص، جاري توزيعها على حقول المذكرة...';
+    parseAndFillFields(extractedText);
+
+    statusEl.textContent = '✅ تمت عملية التحليل والتعبئة بنجاح!';
+    showToast('🎉 تم ملء الحقول تلقائياً بناءً على تحليل الصورة!');
+    
+    setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+  } catch (error) {
+    console.error(error);
+    statusEl.textContent = '❌ تعذر التحليل. تأكد من تشغيل الصفحة عبر خادم محلي (Live Server).';
+    showToast('⚠️ خطأ: يرجى فتح الصفحة عبر خادم محلي لتجاوز قيود المتصفح.');
+  }
+}
+
+/* خوارزمية تحليل النص وتوزيعه على حقول المذكرة */
+function parseAndFillFields(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  let fullCleanText = lines.join(' ');
+
+  if (lines.length > 0) {
+    const potentialTitle = lines[0];
+    if (potentialTitle.length > 3 && potentialTitle.length < 80) {
+      document.getElementById('c-title').value = potentialTitle;
+      syncField('f-title', potentialTitle);
+    }
+  }
+
+  lines.forEach(line => {
+    const lower = line.toLowerCase();
+    if (lower.includes('مقطع') || lower.includes('وحدة') || lower.includes('module')) {
+      document.getElementById('c-unit').value = line;
+      syncField('f-unit', line);
+    } else if (lower.includes('كفاءة') || lower.includes('هدف') || lower.includes('objectif')) {
+      document.getElementById('c-objective').value = line;
+      syncField('f-objective', line);
+    } else if (lower.includes('وسائل') || lower.includes('عتاد') || lower.includes('matériel')) {
+      document.getElementById('c-tools').value = line;
+      syncField('f-tools', line);
+    } else if (lower.includes('مكتسبات') || lower.includes('prérequis')) {
+      document.getElementById('c-prereq').value = line;
+      syncField('f-prereq', line);
+    } else if (lower.includes('مادة') || lower.includes('matière')) {
+      document.getElementById('c-subject').value = line;
+      syncField('f-subject', line);
+    }
+  });
+
+  if (fullCleanText.length > 20 && document.getElementById('f-build').value.length < 15) {
+    document.getElementById('c-build').value = fullCleanText.substring(0, 250) + '...';
+    syncField('f-build', document.getElementById('c-build').value);
+  }
+}
+
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    customLogoBase64 = evt.target.result;
+    const crest = document.getElementById('crest');
+    crest.innerHTML = `<img src="${customLogoBase64}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('top-bar-logo').src = customLogoBase64;
+    showToast('📸 تم تحديث صورة الشعار بنجاح!');
+  };
+  reader.readAsDataURL(file);
+}
+
+const iconSets = {
+  history_geo: ['🏛️','📜','🗿','⏳','🌍','🗺️','🧭'],
+  math: ['🧮','📐','📊','🔢','➕','➖','✖️'],
+  physics_chem: ['🧪','🔬','⚡','⚛️','🧲','💡'],
+  languages: ['✍️','📚','📖','✒️','📝','🗣️'],
+  informatics: ['💻','🖥️','🖱️','💾','⌨️','🔌'],
+  roses: ['🌹','🌸','💜','🌷','🌸'],
+  all: ['📚','💻','🌸','🖥️','📖','🌹','📐','📊','📜','🏛️','🌍','🧪','🔬','✍️','🧮'],
+  none: ['🎓']
+};
+
+function updateBgPattern() {
+  const type = document.getElementById('bgPattern').value;
+  const icons = iconSets[type] || iconSets.history_geo;
+  
+  const crestEl = document.getElementById('crest');
+  if (crestEl && !customLogoBase64 && icons.length > 0) {
+    crestEl.innerText = icons[0];
+  }
+
+  if (type === 'none' || !icons.length) {
+    document.getElementById('memo-paper').style.setProperty('--memo-bg', 'none');
+    return;
+  }
+  
+  const items = icons.slice(0, 6);
+  let texts = '';
+  const positions = [[10,20],[50,15],[85,25],[25,55],[65,50],[90,60]];
+  items.forEach((ic, i) => {
+    const [x, y] = positions[i % positions.length];
+    texts += `<text x="${x}" y="${y}" font-size="14" opacity="0.9">${ic}</text>`;
+  });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">${texts}</svg>`;
+  document.getElementById('memo-paper').style.setProperty('--memo-bg', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+}
+updateBgPattern();
+
+function setFontSize(val) {
+  document.getElementById('fontSizeVal').textContent = val + 'px';
+  document.documentElement.style.setProperty('--memo-base-font-size', val + 'px');
+}
+
+function setFontFamily(font) {
+  document.documentElement.style.setProperty('--memo-font-family', font);
+}
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showToast('⚠️ المتصفح لا يدعم التعرف الصوتي.');
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.lang = 'ar-DZ';
+  rec.continuous = true;
+  rec.interimResults = true;
+  return rec;
+}
+
+function toggleVoice(targetInputId, btnEl) {
+  if (!recognition) {
+    recognition = initSpeechRecognition();
+    if (!recognition) return;
+  }
+
+  const inputEl = document.getElementById(targetInputId);
+  if (activeMicBtn === btnEl) {
+    recognition.stop();
+    btnEl.classList.remove('recording');
+    btnEl.innerText = '🎤 صوتي';
+    activeMicBtn = null;
+    return;
+  }
+
+  if (activeMicBtn) {
+    activeMicBtn.classList.remove('recording');
+    activeMicBtn.innerText = '🎤 صوتي';
+    recognition.stop();
+  }
+
+  activeMicBtn = btnEl;
+  btnEl.classList.add('recording');
+  btnEl.innerText = '🔴 استماع...';
+
+  recognition.onresult = (event) => {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    inputEl.value = transcript;
+    inputEl.dispatchEvent(new Event('input'));
+  };
+
+  recognition.onerror = () => { btnEl.classList.remove('recording'); btnEl.innerText = '🎤 صوتي'; activeMicBtn = null; };
+  recognition.onend = () => { if (activeMicBtn === btnEl) { btnEl.classList.remove('recording'); btnEl.innerText = '🎤 صوتي'; activeMicBtn = null; } };
+
+  recognition.start();
+  showToast('🎙️ جاري الاستماع...');
+}
+
+function updateOpacity(val) {
+  document.getElementById('opacityVal').textContent = val + '%';
+  document.getElementById('memo-paper').style.setProperty('--bg-opacity', (val / 100).toFixed(2));
+}
+
+function setPrimaryColor(hex) {
+  document.documentElement.style.setProperty('--primary', hex);
+  document.documentElement.style.setProperty('--primary-light', adjustBrightness(hex, 40));
+  document.documentElement.style.setProperty('--accent', adjustBrightness(hex, 70));
+  document.documentElement.style.setProperty('--rose', adjustBrightness(hex, 120));
+  document.getElementById('colorPicker').value = hex;
+  updateBgPattern();
+}
+
+function adjustBrightness(hex, amount) {
+  let r = Math.min(255, Math.max(0, parseInt(hex.slice(1,3),16) + amount));
+  let g = Math.min(255, Math.max(0, parseInt(hex.slice(3,5),16) + amount));
+  let b = Math.min(255, Math.max(0, parseInt(hex.slice(5,7),16) + amount));
+  return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+}
+
+function pickSwatch(hex, el) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  setPrimaryColor(hex);
+}
+
+function syncField(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
+}
+
+function switchTab(name, btn) {
+  document.getElementById('tab-content').classList.add('hidden');
+  document.getElementById('tab-design').classList.add('hidden');
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateBorder(style) {
+  const paper = document.getElementById('memo-paper');
+  paper.classList.remove('memo-border');
+  paper.style.border = '';
+  paper.style.outline = '';
+  if (style === 'double') paper.classList.add('memo-border');
+  else if (style === 'single') paper.style.border = '2px solid var(--primary)';
+}
+
+function resetMemo() { if (confirm('هل تريد إعادة تعيين جميع الحقول؟')) location.reload(); }
+
+async function downloadPDF() {
+  showToast('⏳ جاري إعداد وتصدير ملف الـ PDF...');
+  await document.fonts.ready;
+  const element = document.getElementById('memo-paper');
+  const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', width: 794, windowWidth: 794 });
+  const imgData = canvas.toDataURL('image/jpeg', 1.0);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const imgWidth = 210, pageHeight = 297;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight > pageHeight ? pageHeight : imgHeight);
+  pdf.save('مذكرة_بيداغوجية_محللة.pdf');
+  showToast('✅ تم التصدير بنجاح!');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
